@@ -6,7 +6,6 @@ import com.vv.bi.common.BaseResponse;
 import com.vv.bi.common.DeleteRequest;
 import com.vv.bi.common.ErrorCode;
 import com.vv.bi.common.ResultUtils;
-import com.vv.bi.config.WxOpenConfig;
 import com.vv.bi.constant.UserConstant;
 import com.vv.bi.exception.BusinessException;
 import com.vv.bi.exception.ThrowUtils;
@@ -44,8 +43,7 @@ public class UserController {
     @Resource
     private UserService userService;
 
-    @Resource
-    private WxOpenConfig wxOpenConfig;
+
 
     // region 登录相关
 

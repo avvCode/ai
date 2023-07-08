@@ -9,26 +9,32 @@ import com.vv.bi.common.DeleteRequest;
 import com.vv.bi.common.ErrorCode;
 import com.vv.bi.common.ResultUtils;
 import com.vv.bi.constant.CommonConstant;
+import com.vv.bi.constant.FileConstant;
 import com.vv.bi.constant.UserConstant;
 import com.vv.bi.exception.BusinessException;
 import com.vv.bi.exception.ThrowUtils;
-import com.vv.bi.model.dto.chart.ChartAddRequest;
-import com.vv.bi.model.dto.chart.ChartEditRequest;
-import com.vv.bi.model.dto.chart.ChartQueryRequest;
-import com.vv.bi.model.dto.chart.ChartUpdateRequest;
+import com.vv.bi.manager.AiManager;
+import com.vv.bi.model.dto.chart.*;
+import com.vv.bi.model.dto.file.UploadFileRequest;
 import com.vv.bi.model.entity.Chart;
 import com.vv.bi.model.entity.User;
+import com.vv.bi.model.enums.FileUploadBizEnum;
+import com.vv.bi.model.vo.AiResponse;
 import com.vv.bi.service.ChartService;
 import com.vv.bi.service.UserService;
+import com.vv.bi.utils.ExcelUtils;
 import com.vv.bi.utils.SqlUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
+import java.io.File;
 
 /**
  * 帖子接口
@@ -44,6 +50,9 @@ public class ChartController {
 
     @Resource
     private UserService userService;
+
+    @Resource
+    private AiManager aiManager;
 
     private final static Gson GSON = new Gson();
 
@@ -220,6 +229,7 @@ public class ChartController {
             return queryWrapper;
         }
         Long id = chartQueryRequest.getId();
+        String name = chartQueryRequest.getName();
         String goal = chartQueryRequest.getGoal();
         String chartType = chartQueryRequest.getChartType();
         Long userId = chartQueryRequest.getUserId();
@@ -228,6 +238,7 @@ public class ChartController {
 
         queryWrapper.eq(id != null && id > 0, "id", id);
         queryWrapper.eq(StringUtils.isNotBlank(goal), "goal", goal);
+        queryWrapper.like(StringUtils.isNotBlank(name), "name", name);
         queryWrapper.eq(StringUtils.isNotBlank(chartType), "chartType", chartType);
         queryWrapper.eq(ObjectUtils.isNotEmpty(userId), "userId", userId);
         queryWrapper.eq("isDelete", false);
@@ -236,5 +247,58 @@ public class ChartController {
         return queryWrapper;
     }
 
+    /**
+     * 只能分析
+     *
+     * @param multipartFile
+     * @param genChartByAIRequest
+     * @param request
+     * @return
+     */
+    @PostMapping("/gen")
+    public BaseResponse genChartByAI(@RequestPart("file") MultipartFile multipartFile,
+                                             GenChartByAIRequest genChartByAIRequest, HttpServletRequest request) {
+        String chartType = genChartByAIRequest.getChartType();
+        String name = genChartByAIRequest.getName();
+        String goal = genChartByAIRequest.getGoal();
+        ThrowUtils.throwIf(StringUtils.isBlank(goal),ErrorCode.PARAMS_ERROR,"目标为空");
+        ThrowUtils.throwIf(StringUtils.isNotBlank(name) && name.length() > 100,ErrorCode.PARAMS_ERROR,"名称过长");
+        User loginUser = userService.getLoginUser(request);
+        StringBuilder userInput = new StringBuilder();
+       userInput.append("分析需求：").append("\n");
+       String userGoal = goal;
+       if(StringUtils.isNotBlank(chartType)){
+           userGoal += ",请使用" + chartType;
+       }
+       userInput.append(userGoal).append("\n");
+       String csvData = ExcelUtils.excelToCsv(multipartFile);
+       userInput.append(csvData).append("\n");
 
+        Long biModelId = 1677647572774281218L;
+        String result = aiManager.doChat(biModelId, userInput.toString());
+        //对返回结果做拆分
+        String[] splits = result.split("【【【【【");
+        if(splits.length < 3){
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR,"AI 生成错误");
+        }
+
+        String genChart = splits[1].trim();
+        String genResult = splits[2].trim();
+        Chart chart = new Chart();
+
+        chart.setGoal(goal);
+        chart.setName(name);
+        chart.setChartData(csvData);
+        chart.setChartType(chartType);
+        chart.setGenChart(genChart);
+        chart.setGenResult(genResult);
+        chart.setUserId(loginUser.getId());
+        boolean saveResult = chartService.save(chart);
+        ThrowUtils.throwIf(!saveResult,ErrorCode.SYSTEM_ERROR,"图表保存失败");
+        AiResponse aiResponse = new AiResponse();
+        aiResponse.setGenChart(genChart);
+        aiResponse.setGenResult(genResult);
+        aiResponse.setChartId(chart.getId());
+        return  ResultUtils.success(aiResponse);
+    }
 }

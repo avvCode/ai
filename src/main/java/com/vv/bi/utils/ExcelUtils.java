@@ -12,6 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,17 +26,17 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ExcelUtils {
     public static String excelToCsv(MultipartFile multipartFile)  {
-        File file = null;
+
+        List<Map<Integer, String>> list = null;
         try {
-            file = ResourceUtils.getFile("classpath:网站数据.xlsx");
-        } catch (FileNotFoundException e) {
-            log.error("表格处理错误",e);
+            list = EasyExcel.read(multipartFile.getInputStream())
+                    .excelType(ExcelTypeEnum.XLSX)
+                    .sheet()
+                    .headRowNumber(0)
+                    .doReadSync();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
-        List<Map<Integer, String>> list = EasyExcel.read(file)
-                .excelType(ExcelTypeEnum.XLSX)
-                .sheet()
-                .headRowNumber(0)
-                .doReadSync();
         if(CollUtil.isEmpty(list)){
             return "";
         }

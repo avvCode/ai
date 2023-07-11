@@ -1,5 +1,6 @@
 package com.vv.bi.controller;
 
+import cn.hutool.core.io.FileUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.google.gson.Gson;
@@ -14,6 +15,7 @@ import com.vv.bi.constant.UserConstant;
 import com.vv.bi.exception.BusinessException;
 import com.vv.bi.exception.ThrowUtils;
 import com.vv.bi.manager.AiManager;
+import com.vv.bi.manager.RedisLimiterManager;
 import com.vv.bi.model.dto.chart.*;
 import com.vv.bi.model.dto.file.UploadFileRequest;
 import com.vv.bi.model.entity.Chart;
@@ -35,6 +37,8 @@ import org.springframework.web.multipart.MultipartFile;
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.io.File;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * 帖子接口
@@ -53,7 +57,8 @@ public class ChartController {
 
     @Resource
     private AiManager aiManager;
-
+    @Resource
+    private RedisLimiterManager redisLimiterManager;
     private final static Gson GSON = new Gson();
 
     // region 增删改查
@@ -256,14 +261,28 @@ public class ChartController {
      * @return
      */
     @PostMapping("/gen")
-    public BaseResponse genChartByAI(@RequestPart("file") MultipartFile multipartFile,
+    public BaseResponse genChartByAi(@RequestPart("file") MultipartFile multipartFile,
                                              GenChartByAIRequest genChartByAIRequest, HttpServletRequest request) {
         String chartType = genChartByAIRequest.getChartType();
         String name = genChartByAIRequest.getName();
         String goal = genChartByAIRequest.getGoal();
         ThrowUtils.throwIf(StringUtils.isBlank(goal),ErrorCode.PARAMS_ERROR,"目标为空");
         ThrowUtils.throwIf(StringUtils.isNotBlank(name) && name.length() > 100,ErrorCode.PARAMS_ERROR,"名称过长");
+       //对用户上传的文件进行校验
+        long size = multipartFile.getSize();
+        String originalFilename = multipartFile.getOriginalFilename();
+        final long ONE_MB = 1024 *  1024L;
+        ThrowUtils.throwIf(size > ONE_MB,ErrorCode.PARAMS_ERROR,"文件大小超过 1M");
+        String suffix = FileUtil.getSuffix(originalFilename);
+        List<String> validFileSuffixList = Arrays.asList("png","svg","jpeg","webp","jpg");
+        ThrowUtils.throwIf(!validFileSuffixList.contains(suffix),ErrorCode.PARAMS_ERROR,"不支持的文件格式");
+
         User loginUser = userService.getLoginUser(request);
+
+        //限流判断
+        redisLimiterManager.doRateLimiter("genChartByAi_"+loginUser.getId());
+
+        //构造用户请求
         StringBuilder userInput = new StringBuilder();
        userInput.append("分析需求：").append("\n");
        String userGoal = goal;
@@ -271,6 +290,9 @@ public class ChartController {
            userGoal += ",请使用" + chartType;
        }
        userInput.append(userGoal).append("\n");
+
+
+
        String csvData = ExcelUtils.excelToCsv(multipartFile);
        userInput.append(csvData).append("\n");
 

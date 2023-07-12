@@ -274,7 +274,7 @@ public class ChartController {
         final long ONE_MB = 1024 *  1024L;
         ThrowUtils.throwIf(size > ONE_MB,ErrorCode.PARAMS_ERROR,"文件大小超过 1M");
         String suffix = FileUtil.getSuffix(originalFilename);
-        List<String> validFileSuffixList = Arrays.asList("png","svg","jpeg","webp","jpg");
+        List<String> validFileSuffixList = Arrays.asList("xls","xlsx");
         ThrowUtils.throwIf(!validFileSuffixList.contains(suffix),ErrorCode.PARAMS_ERROR,"不支持的文件格式");
 
         User loginUser = userService.getLoginUser(request);

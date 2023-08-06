@@ -4,7 +4,7 @@
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.vv.bi.mapper.ChartMapper">
 
-    <resultMap id="BaseResultMap" type="com.vv.bi.model.entity.Chart">
+    <resultMap id="BaseResultMap" type="com.vv.analyze.model.entity.Chart">
             <id property="id" column="id" jdbcType="BIGINT"/>
             <result property="goal" column="goal" jdbcType="VARCHAR"/>
             <result property="name" column="name" jdbcType="VARCHAR"/>

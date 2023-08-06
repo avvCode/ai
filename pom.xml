@@ -10,7 +10,7 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.vv</groupId>
-    <artifactId>bi-backend</artifactId>
+    <artifactId>easy-data-analyze</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>bi-backend</name>
     <properties>
@@ -54,11 +54,6 @@
             <groupId>org.redisson</groupId>
             <artifactId>redisson</artifactId>
             <version>3.23.0</version>
-        </dependency>
-        <!-- elasticsearch-->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-elasticsearch</artifactId>
         </dependency>
 
         <!-- https://doc.xiaominfo.com/knife4j/documentation/get_start.html-->
@@ -121,6 +116,13 @@
             <artifactId>yucongming-java-sdk</artifactId>
             <version>0.0.2</version>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/org.springframework.boot/spring-boot-starter-amqp -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
+            <version>2.7.2</version>
+        </dependency>
+
     </dependencies>
 
     <build>

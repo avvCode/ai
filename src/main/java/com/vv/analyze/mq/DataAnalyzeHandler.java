@@ -87,6 +87,11 @@ public class DataAnalyzeHandler {
         if(!b1){
             handleChartUpdateError(id,"图表状态生成成功更改失败");
         }
+        try {
+            channel.basicAck(deliveryTag,false);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
     private void handleChartUpdateError(long chartId,String execMessage){
         Chart updateChartResult = new Chart();
